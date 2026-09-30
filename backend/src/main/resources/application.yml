@@ -1,0 +1,19 @@
+spring:
+  datasource:
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:farm2market}
+    username: ${DB_USERNAME:farm2market}
+    password: ${DB_PASSWORD:farm2market}
+  jpa:
+    hibernate:
+      ddl-auto: update
+    open-in-view: false
+    properties:
+      hibernate:
+        format_sql: true
+  jackson:
+    default-property-inclusion: non_null
+server:
+  port: 8080
+jwt:
+  secret: ${JWT_SECRET:change-this-development-secret-to-a-long-random-value}
+  expiration: 86400000

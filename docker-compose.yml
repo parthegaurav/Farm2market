@@ -1,0 +1,19 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: farm2market-db
+    environment:
+      POSTGRES_DB: ${DB_NAME:-farm2market}
+      POSTGRES_USER: ${DB_USERNAME:-farm2market}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-farm2market}
+    ports:
+      - "5432:5432"
+    volumes:
+      - farm2market_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USERNAME:-farm2market} -d ${DB_NAME:-farm2market}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+volumes:
+  farm2market_pgdata:

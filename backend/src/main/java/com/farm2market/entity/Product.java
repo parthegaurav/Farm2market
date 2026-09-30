@@ -1,0 +1,3 @@
+package com.farm2market.entity;
+import jakarta.persistence.*; import lombok.*; import java.time.*;
+@Entity @Getter @Setter @NoArgsConstructor public class Product { @Id @GeneratedValue(strategy=GenerationType.IDENTITY) private Long id; @ManyToOne(optional=false) private User farmer; @Column(nullable=false) private String name; @Enumerated(EnumType.STRING) private Category category; @Column(length=1000) private String description; private Double pricePerKg,availableQuantity,minimumOrderQuantity; private String unit,qualityGrade,location,imageUrl; private boolean active=true; private LocalDateTime createdAt=LocalDateTime.now(),updatedAt=LocalDateTime.now(); }

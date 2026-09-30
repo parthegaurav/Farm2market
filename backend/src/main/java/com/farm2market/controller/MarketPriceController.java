@@ -1,0 +1,3 @@
+package com.farm2market.controller;
+import com.farm2market.entity.*; import com.farm2market.repository.*; import org.springframework.web.bind.annotation.*; import java.util.*;
+@RestController @RequestMapping("/api/market-prices") public class MarketPriceController {final MarketPriceRepository repo;MarketPriceController(MarketPriceRepository r){repo=r;} @GetMapping public Map<String,Object> all(){return Map.of("success",true,"data",repo.findAll());} @GetMapping("/{name}") public Map<String,Object> one(@PathVariable String name){return Map.of("success",true,"data",repo.findByProductNameContainingIgnoreCase(name));}}

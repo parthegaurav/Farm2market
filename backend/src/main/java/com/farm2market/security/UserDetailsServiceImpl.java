@@ -1,0 +1,3 @@
+package com.farm2market.security;
+import com.farm2market.entity.User; import com.farm2market.repository.UserRepository; import org.springframework.security.core.userdetails.*; import org.springframework.stereotype.Service;
+@Service public class UserDetailsServiceImpl implements UserDetailsService { private final UserRepository repo; public UserDetailsServiceImpl(UserRepository r){repo=r;} public UserDetails loadUserByUsername(String e)throws UsernameNotFoundException{User u=repo.findByEmail(e).orElseThrow(()->new UsernameNotFoundException(e)); return org.springframework.security.core.userdetails.User.withUsername(u.getEmail()).password(u.getPassword()).roles(u.getRole().name()).build();}}

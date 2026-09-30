@@ -1,0 +1,3 @@
+package com.farm2market.entity;
+import jakarta.persistence.*; import lombok.*; import java.time.*; import java.util.*;
+@Entity @Table(name="orders") @Getter @Setter @NoArgsConstructor public class Order { @Id @GeneratedValue(strategy=GenerationType.IDENTITY) private Long id; @ManyToOne(optional=false) private User buyer; @ManyToOne(optional=false) private User farmer; private Double totalAmount; @Enumerated(EnumType.STRING) private OrderStatus status=OrderStatus.PENDING; private String deliveryLocation; private LocalDateTime createdAt=LocalDateTime.now(),updatedAt=LocalDateTime.now(); @OneToMany(mappedBy="order",cascade=CascadeType.ALL) private List<OrderItem> items=new ArrayList<>(); }
