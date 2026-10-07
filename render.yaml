@@ -1,0 +1,58 @@
+services:
+  - type: web
+    name: farm2market-api-parthegaurav
+    runtime: docker
+    plan: free
+    region: singapore
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    healthCheckPath: /api/products
+    envVars:
+      - key: SPRING_PROFILES_ACTIVE
+        value: prod
+      - key: DB_HOST
+        fromDatabase:
+          name: farm2market-db-parthegaurav
+          property: host
+      - key: DB_PORT
+        fromDatabase:
+          name: farm2market-db-parthegaurav
+          property: port
+      - key: DB_NAME
+        fromDatabase:
+          name: farm2market-db-parthegaurav
+          property: database
+      - key: DB_USERNAME
+        fromDatabase:
+          name: farm2market-db-parthegaurav
+          property: user
+      - key: DB_PASSWORD
+        fromDatabase:
+          name: farm2market-db-parthegaurav
+          property: password
+      - key: JWT_SECRET
+        generateValue: true
+      - key: CORS_ALLOWED_ORIGIN
+        value: https://farm2market-parthegaurav.onrender.com
+
+  - type: web
+    name: farm2market-parthegaurav
+    runtime: static
+    rootDir: frontend
+    buildCommand: npm install && npm run build
+    staticPublishPath: dist
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
+    envVars:
+      - key: VITE_API_URL
+        value: https://farm2market-api-parthegaurav.onrender.com/api
+
+databases:
+  - name: farm2market-db-parthegaurav
+    plan: free
+    region: singapore
+    databaseName: farm2market
+    user: farm2market
+    postgresMajorVersion: "16"

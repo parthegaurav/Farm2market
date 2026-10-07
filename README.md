@@ -23,8 +23,8 @@ Open http://localhost:5173.
 ### Option B: Docker database only
 The API uses `DB_HOST=localhost`, port `5432`, database `farm2market`, username `farm2market`, password `farm2market` by default. Set environment variables in `.env` or your shell.
 
-## Demo accounts
-Seed data is inserted on first startup:
+## Local development demo accounts
+Demo seed data is enabled outside the `prod` Spring profile and inserted on first startup:
 - Admin: `admin@farm2market.com` / `Admin@123`
 - Farmer: `farmer@farm2market.com` / `Farmer@123`
 - Buyer: `buyer@farm2market.com` / `Buyer@123`
@@ -45,3 +45,7 @@ All responses use `{ success, message, data }`; validation errors use a consiste
 
 ## Future improvements
 Payments, delivery tracking, image storage, refresh tokens, notifications, farmer verification, and production observability.
+
+
+## Deploy to Render
+The repository includes a Render Blueprint in `render.yaml`. It creates a static frontend, a Docker-based Spring Boot API, and a PostgreSQL database in Singapore. The Blueprint uses Render's free plans for a no-cost demo deployment; free API instances can spin down when idle, and free PostgreSQL databases expire after 30 days. Use a paid database plan and an appropriate paid API plan for persistent production data. The production profile disables the development demo accounts; new buyers and farmers can register through the app.
