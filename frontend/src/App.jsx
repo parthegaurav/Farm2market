@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { createRoot } from 'react-dom/client';
-import { BrowserRouter, Routes, Route, Link, useNavigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Link, useNavigate, useLocation } from 'react-router-dom';
 import axios from 'axios';
 import './style.css';
 
@@ -300,6 +300,7 @@ function Marketplace({ lang, onAddToCart }) {
 
 function Login({ lang, onSessionChange }) {
   const nav = useNavigate();
+  const location = useLocation();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
 
@@ -309,7 +310,7 @@ function Login({ lang, onSessionChange }) {
       .then(r => {
         localStorage.setItem('session', JSON.stringify(r.data.data));
         onSessionChange(r.data.data);
-        nav('/dashboard');
+        nav(location.state?.from || '/dashboard');
       })
       .catch(() => alert(t(lang, 'loginError')));
   }
@@ -323,12 +324,13 @@ function Login({ lang, onSessionChange }) {
       <label>{t(lang, 'password')}<input type="password" value={password} onChange={e => setPassword(e.target.value)} /></label>
       <button className="button full">{t(lang, 'signInButton')}</button>
     </form>
-    <p>{t(lang, 'newHere')} <Link to="/register">{t(lang, 'createAccount')}</Link></p>
+    <p>{t(lang, 'newHere')} <Link to="/register" state={location.state}>{t(lang, 'createAccount')}</Link></p>
   </div>;
 }
 
 function Register({ lang, onSessionChange }) {
   const nav = useNavigate();
+  const location = useLocation();
   const [form, setForm] = useState({ name: '', email: '', password: '', role: 'BUYER' });
   const [error, setError] = useState('');
 
@@ -465,7 +467,7 @@ function Checkout({ lang, session, cart, onClearCart, onRemoveItems }) {
 
   return <section className="checkout-page">
     <div className="page-head"><span className="eyebrow">{t(lang, 'checkout')}</span><h1>{t(lang, 'checkout')}</h1></div>
-    {!session && <div className="checkout-panel"><p>{t(lang, 'loginRequired')}</p><Link className="button" to="/login">{t(lang, 'login')}</Link></div>}
+    {!session && <div className="checkout-panel"><p>{t(lang, 'loginRequired')}</p><Link className="button" to="/login" state={{ from: '/checkout' }}>{t(lang, 'login')}</Link></div>}
     {session && session.role !== 'BUYER' && <div className="checkout-panel"><p>{t(lang, 'loginRequired')}</p></div>}
     {session?.role === 'BUYER' && cart.length === 0 && <div className="checkout-panel"><p>{t(lang, 'emptyCart')}</p><Link className="button" to="/marketplace">{t(lang, 'continueShopping')}</Link></div>}
     {session?.role === 'BUYER' && cart.length > 0 && <form className="checkout-layout" onSubmit={submit}>
