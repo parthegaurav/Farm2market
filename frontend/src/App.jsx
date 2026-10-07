@@ -4,7 +4,21 @@ import { BrowserRouter, Routes, Route, Link, useNavigate } from 'react-router-do
 import axios from 'axios';
 import './style.css';
 
+function readStored(key, fallback) {
+  try {
+    const value = localStorage.getItem(key);
+    return value ? JSON.parse(value) : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
 const api = axios.create({ baseURL: import.meta.env.VITE_API_URL || 'http://localhost:8080/api' });
+api.interceptors.request.use(config => {
+  const session = readStored('session', null);
+  if (session?.token) config.headers.Authorization = 'Bearer ' + session.token;
+  return config;
+});
 
 const text = {
   mr: {
@@ -35,6 +49,28 @@ const text = {
     available: 'उपलब्ध',
     grade: 'प्रत',
     addCart: 'कार्टमध्ये जोडा',
+    cart: 'कार्ट',
+    remove: 'काढा',
+    emptyCart: 'तुमचे कार्ट रिकामे आहे.',
+    cartSummary: 'कार्टचा तपशील',
+    itemCount: 'वस्तू',
+    proceedCheckout: 'चेकआउट करा',
+    checkout: 'चेकआउट',
+    deliveryLocation: 'वितरणाचा पत्ता',
+    addressPlaceholder: 'पूर्ण वितरणाचा पत्ता लिहा',
+    placeOrder: 'ऑर्डर नोंदवा',
+    placingOrder: 'ऑर्डर नोंदवत आहोत...',
+    orderSuccess: 'तुमची ऑर्डर नोंदवली आहे.',
+    orderError: 'ऑर्डर नोंदवता आली नाही. कृपया पुन्हा प्रयत्न करा.',
+    partialOrder: 'काही ऑर्डर्स नोंदवल्या; उरलेल्या ऑर्डर्स कार्टमध्ये आहेत.',
+    demoOrderError: 'हे नमुना शेतमाल आहे. खरेदीसाठी शेतकऱ्याने नोंदवलेला शेतमाल निवडा.',
+    loginRequired: 'चेकआउटसाठी आधी खरेदीदार म्हणून लॉग इन करा.',
+    signOut: 'लॉग आउट',
+    dashboard: 'माझे खाते',
+    orderTotal: 'ऑर्डरची एकूण रक्कम',
+    deliveryNote: 'या आवृत्तीत ऑनलाइन पेमेंट घेतले जात नाही.',
+    increaseQuantity: 'संख्या वाढवा',
+    decreaseQuantity: 'संख्या कमी करा',
     noResults: 'या शोधासाठी शेतमाल सापडला नाही.',
     welcome: 'पुन्हा स्वागत आहे',
     signIn: 'खात्यात प्रवेश करा',
@@ -93,6 +129,28 @@ const text = {
     available: 'Available',
     grade: 'Grade',
     addCart: 'Add to cart',
+    cart: 'Cart',
+    remove: 'Remove',
+    emptyCart: 'Your cart is empty.',
+    cartSummary: 'Cart summary',
+    itemCount: 'items',
+    proceedCheckout: 'Proceed to checkout',
+    checkout: 'Checkout',
+    deliveryLocation: 'Delivery address',
+    addressPlaceholder: 'Enter your full delivery address',
+    placeOrder: 'Place order',
+    placingOrder: 'Placing order...',
+    orderSuccess: 'Your order has been placed.',
+    orderError: 'Could not place the order. Please try again.',
+    partialOrder: 'Some orders were placed; the remaining items are still in your cart.',
+    demoOrderError: 'These are sample listings. Select produce listed by a farmer to place an order.',
+    loginRequired: 'Please log in as a buyer before checkout.',
+    signOut: 'Log out',
+    dashboard: 'My account',
+    orderTotal: 'Order total',
+    deliveryNote: 'Online payment is not collected in this version.',
+    increaseQuantity: 'Increase quantity',
+    decreaseQuantity: 'Decrease quantity',
     noResults: 'No produce found for this search.',
     welcome: 'WELCOME BACK',
     signIn: 'Sign in',
@@ -140,21 +198,24 @@ const categoryText = (lang, category) => ({
   FLOWER: t(lang, 'flowers')
 }[category] || category);
 
-function Nav({ lang, onToggle }) {
+function Nav({ lang, onToggle, session, cartCount, onLogout }) {
   return <header>
     <Link className="brand" to="/">🌱 {t(lang, 'brand')}</Link>
     <nav>
       <Link to="/marketplace">{t(lang, 'marketplace')}</Link>
       <Link to="/prices">{t(lang, 'prices')}</Link>
-      <Link to="/login">{t(lang, 'login')}</Link>
+      {session
+        ? <><Link to="/dashboard">{t(lang, 'dashboard')}</Link><button className="nav-action" type="button" onClick={onLogout}>{t(lang, 'signOut')}</button></>
+        : <Link to="/login">{t(lang, 'login')}</Link>}
+      <Link className="cart-link" to="/cart">{t(lang, 'cart')} <span className="cart-count">{cartCount}</span></Link>
       <button className="language-toggle" type="button" onClick={onToggle} aria-label={t(lang, 'language')}>{t(lang, 'switchToEnglish')}</button>
     </nav>
   </header>;
 }
 
-function Layout({ children, lang, onToggle }) {
+function Layout({ children, lang, onToggle, session, cartCount, onLogout }) {
   return <>
-    <Nav lang={lang} onToggle={onToggle} />
+    <Nav lang={lang} onToggle={onToggle} session={session} cartCount={cartCount} onLogout={onLogout} />
     <main>{children}</main>
     <footer>{t(lang, 'footer')}</footer>
   </>;
@@ -182,7 +243,7 @@ function Home({ lang }) {
   </>;
 }
 
-function Marketplace({ lang }) {
+function Marketplace({ lang, onAddToCart }) {
   const [items, setItems] = useState([]);
   const [q, setQ] = useState('');
   const [category, setCategory] = useState('ALL');
@@ -198,7 +259,8 @@ function Marketplace({ lang }) {
     pricePerKg: Number(d[2].replace(/[^0-9]/g, '')),
     availableQuantity: d[3],
     location: lang === 'mr' ? d[4] : ['Saswad, Pune', 'Narayangaon, Pune', 'Purandar, Pune', 'Ratnagiri', 'Pune'][i],
-    qualityGrade: 'A'
+    qualityGrade: 'A',
+    demoItem: true
   }));
 
   const visible = listings.filter(item =>
@@ -229,14 +291,14 @@ function Marketplace({ lang }) {
         <strong>₹{item.pricePerKg}/kg</strong>
         <p>{t(lang, 'available')}: {item.availableQuantity}</p>
         <small>📍 {item.location} · {t(lang, 'grade')} {item.qualityGrade}</small>
-        <button className="button full" type="button">{t(lang, 'addCart')}</button>
+        <button className="button full" type="button" onClick={() => onAddToCart(item)}>{t(lang, 'addCart')}</button>
       </article>)}
       {visible.length === 0 && <p className="empty-state">{t(lang, 'noResults')}</p>}
     </section>
   </>;
 }
 
-function Login({ lang }) {
+function Login({ lang, onSessionChange }) {
   const nav = useNavigate();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -246,6 +308,7 @@ function Login({ lang }) {
     api.post('/auth/login', { email, password })
       .then(r => {
         localStorage.setItem('session', JSON.stringify(r.data.data));
+        onSessionChange(r.data.data);
         nav('/dashboard');
       })
       .catch(() => alert(t(lang, 'loginError')));
@@ -264,7 +327,7 @@ function Login({ lang }) {
   </div>;
 }
 
-function Register({ lang }) {
+function Register({ lang, onSessionChange }) {
   const nav = useNavigate();
   const [form, setForm] = useState({ name: '', email: '', password: '', role: 'BUYER' });
   const [error, setError] = useState('');
@@ -275,6 +338,7 @@ function Register({ lang }) {
     api.post('/auth/register', form)
       .then(r => {
         localStorage.setItem('session', JSON.stringify(r.data.data));
+        onSessionChange(r.data.data);
         nav('/dashboard');
       })
       .catch(e => setError(e.response?.data?.message || t(lang, 'registerError')));
@@ -298,6 +362,129 @@ function Register({ lang }) {
     </form>
     <p>{t(lang, 'alreadyRegistered')} <Link to="/login">{t(lang, 'signIn')}</Link></p>
   </div>;
+}
+
+
+function CartPage({ lang, cart, onQuantityChange, onRemove }) {
+  const total = cart.reduce((sum, item) => sum + Number(item.pricePerKg || 0) * Number(item.quantity || 0), 0);
+  return <section className="checkout-page">
+    <div className="page-head">
+      <span className="eyebrow">{t(lang, 'cartSummary')}</span>
+      <h1>{t(lang, 'cart')}</h1>
+      <p>{cart.length} {t(lang, 'itemCount')}</p>
+    </div>
+    {cart.length === 0
+      ? <div className="checkout-panel empty-cart"><p>{t(lang, 'emptyCart')}</p><Link className="button" to="/marketplace">{t(lang, 'continueShopping')}</Link></div>
+      : <div className="cart-layout">
+        <div className="cart-items">
+          {cart.map(item => <article className="cart-item" key={item.id}>
+            <div className="produce cart-produce">{item.category === 'FRUIT' ? '🍌' : item.category === 'FLOWER' ? '🌼' : '🥬'}</div>
+            <div className="cart-item-info">
+              <span className="tag">{categoryText(lang, item.category)}</span>
+              <h3>{item.name}</h3>
+              <p>₹{item.pricePerKg}/{item.unit || 'kg'}</p>
+              <div className="quantity-control">
+                <button type="button" aria-label={t(lang, 'decreaseQuantity')} onClick={() => onQuantityChange(item.id, Math.max(1, Number(item.quantity) - 1))}>−</button>
+                <span>{item.quantity}</span>
+                <button type="button" aria-label={t(lang, 'increaseQuantity')} onClick={() => onQuantityChange(item.id, Number(item.quantity) + 1)}>+</button>
+              </div>
+            </div>
+            <div className="cart-item-end">
+              <strong>₹{(Number(item.pricePerKg || 0) * Number(item.quantity || 0)).toLocaleString('en-IN')}</strong>
+              <button className="text-button" type="button" onClick={() => onRemove(item.id)}>{t(lang, 'remove')}</button>
+            </div>
+          </article>)}
+        </div>
+        <aside className="checkout-panel">
+          <h2>{t(lang, 'cartSummary')}</h2>
+          <div className="summary-row"><span>{t(lang, 'orderTotal')}</span><strong>₹{total.toLocaleString('en-IN')}</strong></div>
+          <Link className="button full" to="/checkout">{t(lang, 'proceedCheckout')}</Link>
+        </aside>
+      </div>}
+  </section>;
+}
+
+function Checkout({ lang, session, cart, onClearCart, onRemoveItems }) {
+  const [deliveryLocation, setDeliveryLocation] = useState('');
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
+  const [placing, setPlacing] = useState(false);
+  const total = cart.reduce((sum, item) => sum + Number(item.pricePerKg || 0) * Number(item.quantity || 0), 0);
+
+  async function submit(e) {
+    e.preventDefault();
+    setError('');
+    setSuccess('');
+    if (!session || session.role !== 'BUYER') {
+      setError(t(lang, 'loginRequired'));
+      return;
+    }
+    if (cart.some(item => item.demoItem)) {
+      setError(t(lang, 'demoOrderError'));
+      return;
+    }
+
+    const groups = new Map();
+    cart.forEach(item => {
+      const farmerId = item.farmer?.id || item.farmerId || item.id;
+      if (!groups.has(farmerId)) groups.set(farmerId, { lines: [], cartIds: [] });
+      groups.get(farmerId).lines.push({ productId: item.id, quantity: Number(item.quantity) });
+      groups.get(farmerId).cartIds.push(item.id);
+    });
+
+    setPlacing(true);
+    const completedIds = [];
+    let failure = '';
+    for (const group of groups.values()) {
+      try {
+        await api.post('/orders', { deliveryLocation, items: group.lines });
+        completedIds.push(...group.cartIds);
+      } catch (requestError) {
+        failure = requestError.response?.data?.message || t(lang, 'orderError');
+        break;
+      }
+    }
+    setPlacing(false);
+
+    if (completedIds.length) onRemoveItems(completedIds);
+    if (failure) {
+      setError(completedIds.length ? t(lang, 'partialOrder') + ' ' + failure : failure);
+      return;
+    }
+    onClearCart();
+    setSuccess(t(lang, 'orderSuccess'));
+  }
+
+  if (success) {
+    return <div className="checkout-page"><div className="checkout-panel order-success">
+      <span className="eyebrow">{t(lang, 'checkout')}</span>
+      <h1>{success}</h1>
+      <Link className="button" to="/marketplace">{t(lang, 'continueShopping')}</Link>
+    </div></div>;
+  }
+
+  return <section className="checkout-page">
+    <div className="page-head"><span className="eyebrow">{t(lang, 'checkout')}</span><h1>{t(lang, 'checkout')}</h1></div>
+    {!session && <div className="checkout-panel"><p>{t(lang, 'loginRequired')}</p><Link className="button" to="/login">{t(lang, 'login')}</Link></div>}
+    {session && session.role !== 'BUYER' && <div className="checkout-panel"><p>{t(lang, 'loginRequired')}</p></div>}
+    {session?.role === 'BUYER' && cart.length === 0 && <div className="checkout-panel"><p>{t(lang, 'emptyCart')}</p><Link className="button" to="/marketplace">{t(lang, 'continueShopping')}</Link></div>}
+    {session?.role === 'BUYER' && cart.length > 0 && <form className="checkout-layout" onSubmit={submit}>
+      <div className="checkout-panel">
+        <h2>{t(lang, 'deliveryLocation')}</h2>
+        <label>{t(lang, 'deliveryLocation')}
+          <textarea required rows="4" placeholder={t(lang, 'addressPlaceholder')} value={deliveryLocation} onChange={e => setDeliveryLocation(e.target.value)} />
+        </label>
+        <p className="checkout-note">{t(lang, 'deliveryNote')}</p>
+        {error && <p className="form-error" role="alert">{error}</p>}
+        <button className="button full" type="submit" disabled={placing}>{placing ? t(lang, 'placingOrder') : t(lang, 'placeOrder')}</button>
+      </div>
+      <aside className="checkout-panel">
+        <h2>{t(lang, 'cartSummary')}</h2>
+        {cart.map(item => <div className="summary-row" key={item.id}><span>{item.name} × {item.quantity}</span><strong>₹{(Number(item.pricePerKg || 0) * Number(item.quantity || 0)).toLocaleString('en-IN')}</strong></div>)}
+        <div className="summary-row summary-total"><span>{t(lang, 'orderTotal')}</span><strong>₹{total.toLocaleString('en-IN')}</strong></div>
+      </aside>
+    </form>}
+  </section>;
 }
 
 function Dashboard({ lang }) {
@@ -330,6 +517,8 @@ function Prices({ lang }) {
 
 function App() {
   const [lang, setLang] = useState(() => localStorage.getItem('farm2market-language') || 'mr');
+  const [session, setSession] = useState(() => readStored('session', null));
+  const [cart, setCart] = useState(() => readStored('farm2market-cart', []));
   const toggleLanguage = () => setLang(current => current === 'mr' ? 'en' : 'mr');
 
   useEffect(() => {
@@ -337,14 +526,57 @@ function App() {
     document.documentElement.lang = lang;
   }, [lang]);
 
+  useEffect(() => {
+    if (session) localStorage.setItem('session', JSON.stringify(session));
+    else localStorage.removeItem('session');
+  }, [session]);
+
+  useEffect(() => {
+    localStorage.setItem('farm2market-cart', JSON.stringify(cart));
+  }, [cart]);
+
+  function addToCart(product) {
+    setCart(current => {
+      const existing = current.find(item => item.id === product.id);
+      if (existing) {
+        const stock = Number.parseFloat(product.availableQuantity) || Infinity;
+        return current.map(item => item.id === product.id
+          ? { ...item, quantity: Math.min(Number(item.quantity) + 1, stock) }
+          : item);
+      }
+      return [...current, { ...product, quantity: 1 }];
+    });
+  }
+
+  function updateCartQuantity(id, quantity) {
+    setCart(current => current.map(item => item.id === id ? { ...item, quantity } : item));
+  }
+
+  function removeCartItem(id) {
+    setCart(current => current.filter(item => item.id !== id));
+  }
+
+  function removeCartItems(ids) {
+    const completed = new Set(ids);
+    setCart(current => current.filter(item => !completed.has(item.id)));
+  }
+
+  function logout() {
+    setSession(null);
+  }
+
+  const cartCount = cart.reduce((count, item) => count + Number(item.quantity || 0), 0);
+
   return <BrowserRouter>
-    <Layout lang={lang} onToggle={toggleLanguage}>
+    <Layout lang={lang} onToggle={toggleLanguage} session={session} cartCount={cartCount} onLogout={logout}>
       <Routes>
         <Route path="/" element={<Home lang={lang} />} />
-        <Route path="/marketplace" element={<Marketplace lang={lang} />} />
-        <Route path="/login" element={<Login lang={lang} />} />
-        <Route path="/register" element={<Register lang={lang} />} />
-        <Route path="/dashboard" element={<Dashboard lang={lang} />} />
+        <Route path="/marketplace" element={<Marketplace lang={lang} onAddToCart={addToCart} />} />
+        <Route path="/login" element={<Login lang={lang} onSessionChange={setSession} />} />
+        <Route path="/register" element={<Register lang={lang} onSessionChange={setSession} />} />
+        <Route path="/dashboard" element={session ? <Dashboard lang={lang} /> : <Login lang={lang} onSessionChange={setSession} />} />
+        <Route path="/cart" element={<CartPage lang={lang} cart={cart} onQuantityChange={updateCartQuantity} onRemove={removeCartItem} />} />
+        <Route path="/checkout" element={<Checkout lang={lang} session={session} cart={cart} onClearCart={() => setCart([])} onRemoveItems={removeCartItems} />} />
         <Route path="/prices" element={<Prices lang={lang} />} />
         <Route path="*" element={<Home lang={lang} />} />
       </Routes>
