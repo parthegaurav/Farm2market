@@ -33,3 +33,6 @@
 
 .market-price-row{grid-template-columns:1.1fr 1fr 1.3fr auto;align-items:center;gap:12px}.price-edit{display:flex;align-items:center;gap:8px}.price-edit input{width:120px}.price-actions{display:flex;align-items:center;gap:12px}.price-actions .button{padding:9px 12px}.market-price-row .text-button{white-space:nowrap}
 @media(max-width:650px){.market-price-row{grid-template-columns:1fr auto;gap:8px;padding:14px}.price-edit{grid-column:1/-1}.market-price-row small{grid-column:1/-1}.price-actions{grid-column:1/-1;justify-content:flex-end}.price-edit input{width:100px}}
+
+.cart-peek{position:fixed;z-index:5;left:50%;bottom:18px;transform:translateX(-50%);width:min(680px,calc(100% - 32px));display:flex;align-items:center;justify-content:space-between;gap:18px;padding:14px 18px;background:#fff;border:1px solid #e5e7df;border-radius:14px;box-shadow:0 10px 36px #20352a2b}.cart-peek>div{display:grid;gap:4px}.cart-peek>div strong{color:var(--ink)}.cart-peek>div span{color:var(--green);font-weight:700}.cart-peek .button{white-space:nowrap;padding:12px 16px}
+@media(max-width:500px){.cart-peek{bottom:10px;width:calc(100% - 20px);padding:12px;gap:10px}.cart-peek .button{padding:11px 12px;font-size:12px}}
