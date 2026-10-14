@@ -371,6 +371,17 @@ function Register({ lang, onSessionChange }) {
 }
 
 
+
+function CartPeek({ lang, cart }) {
+  const count = cart.reduce((sum, item) => sum + Number(item.quantity || 0), 0);
+  const total = cart.reduce((sum, item) => sum + Number(item.pricePerKg || 0) * Number(item.quantity || 0), 0);
+  if (!count) return null;
+  return <aside className="cart-peek" aria-label={t(lang, 'cartSummary')}>
+    <div><strong>{count} {t(lang, 'itemCount')}</strong><span>₹{total.toLocaleString('en-IN')}</span></div>
+    <Link className="button" to="/cart">{t(lang, 'cart')} · {t(lang, 'proceedCheckout')} →</Link>
+  </aside>;
+}
+
 function CartPage({ lang, cart, onQuantityChange, onRemove }) {
   const total = cart.reduce((sum, item) => sum + Number(item.pricePerKg || 0) * Number(item.quantity || 0), 0);
   return <section className="checkout-page">
@@ -644,6 +655,7 @@ function App() {
         <Route path="/prices" element={<Prices lang={lang} session={session} />} />
         <Route path="*" element={<Home lang={lang} />} />
       </Routes>
+      <CartPeek lang={lang} cart={cart} />
     </Layout>
   </BrowserRouter>;
 }
