@@ -28,3 +28,5 @@
 .text-button{padding:0;border:0;background:transparent;color:#a33;font:inherit;font-weight:600;cursor:pointer}
 @media(max-width:800px){.cart-layout,.checkout-layout{grid-template-columns:1fr}.cart-item{grid-template-columns:96px minmax(0,1fr) auto}}
 @media(max-width:650px){.checkout-page{padding:0 6% 50px}.cart-item{grid-template-columns:68px minmax(0,1fr) auto;gap:10px;padding:12px}.cart-produce{min-height:76px;font-size:34px}.cart-item-end strong{font-size:15px}.quantity-control{gap:8px}.quantity-control button{width:28px;height:28px}}
+
+.auth select,.auth textarea{width:100%;border:1px solid #d8ded2;border-radius:6px;padding:13px;background:#fff;font:inherit}.auth textarea{resize:vertical}.product-form{max-width:620px}.form-success{color:#236b3d;background:#edf8ef;padding:12px;border-radius:6px}.auth button:disabled{opacity:.65;cursor:wait}
