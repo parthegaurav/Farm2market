@@ -205,7 +205,7 @@ function Nav({ lang, onToggle, session, cartCount, onLogout }) {
       <Link to="/marketplace">{t(lang, 'marketplace')}</Link>
       <Link to="/prices">{t(lang, 'prices')}</Link>
       {session
-        ? <><Link to="/dashboard">{t(lang, 'dashboard')}</Link><button className="nav-action" type="button" onClick={onLogout}>{t(lang, 'signOut')}</button></>
+        ? <><Link className="nav-user" to="/dashboard" title={session.user || t(lang, 'dashboard')}>{session.user || t(lang, 'dashboard')}</Link><button className="nav-action" type="button" onClick={onLogout}>{t(lang, 'signOut')}</button></>
         : <Link to="/login">{t(lang, 'login')}</Link>}
       <Link className="cart-link" to="/cart">{t(lang, 'cart')} <span className="cart-count">{cartCount}</span></Link>
       <button className="language-toggle" type="button" onClick={onToggle} aria-label={t(lang, 'language')}>{t(lang, 'switchToEnglish')}</button>
