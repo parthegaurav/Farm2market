@@ -67,6 +67,8 @@ const text = {
     loginRequired: 'चेकआउटसाठी आधी खरेदीदार म्हणून लॉग इन करा.',
     signOut: 'लॉग आउट',
     dashboard: 'माझे खाते',
+    addProduct: 'शेतमाल नोंदवा',
+    addProductTitle: 'नवीन शेतमाल नोंदवा', productName: 'शेतमालाचे नाव', category: 'प्रकार', description: 'वर्णन', pricePerKg: 'प्रति किलो किंमत', availableQuantity: 'उपलब्ध प्रमाण', unit: 'एकक', minimumOrderQuantity: 'किमान ऑर्डर प्रमाण', qualityGrade: 'दर्जा', location: 'ठिकाण', imageUrl: 'प्रतिमेची लिंक', saveProduct: 'शेतमाल नोंदवा', productAdded: 'शेतमाल यशस्वीरित्या नोंदवला.', productAddError: 'शेतमाल नोंदवता आला नाही. कृपया पुन्हा प्रयत्न करा.', farmerOnly: 'शेतमाल नोंदवण्यासाठी शेतकरी खात्यात प्रवेश करा.', vegetable: 'भाजीपाला', fruit: 'फळे', flower: 'फुले',
     orderTotal: 'ऑर्डरची एकूण रक्कम',
     deliveryNote: 'या आवृत्तीत ऑनलाइन पेमेंट घेतले जात नाही.',
     increaseQuantity: 'संख्या वाढवा',
@@ -147,6 +149,7 @@ const text = {
     loginRequired: 'Please log in as a buyer before checkout.',
     signOut: 'Log out',
     dashboard: 'My account',
+    addProduct: 'Add product', addProductTitle: 'List a product', productName: 'Product name', category: 'Category', description: 'Description', pricePerKg: 'Price per kg', availableQuantity: 'Available quantity', unit: 'Unit', minimumOrderQuantity: 'Minimum order quantity', qualityGrade: 'Quality grade', location: 'Location', imageUrl: 'Image URL', saveProduct: 'Add product', productAdded: 'Product listed successfully.', productAddError: 'Could not list the product. Please try again.', farmerOnly: 'Sign in with a farmer account to list produce.', vegetable: 'Vegetables', fruit: 'Fruits', flower: 'Flowers',
     orderTotal: 'Order total',
     deliveryNote: 'Online payment is not collected in this version.',
     increaseQuantity: 'Increase quantity',
@@ -205,7 +208,7 @@ function Nav({ lang, onToggle, session, cartCount, onLogout }) {
       <Link to="/marketplace">{t(lang, 'marketplace')}</Link>
       <Link to="/prices">{t(lang, 'prices')}</Link>
       {session
-        ? <><Link className="nav-user" to="/dashboard" title={session.user || t(lang, 'dashboard')}>{session.user || t(lang, 'dashboard')}</Link><button className="nav-action" type="button" onClick={onLogout}>{t(lang, 'signOut')}</button></>
+        ? <>{session.role === 'FARMER' && <Link to="/products/new">{t(lang, 'addProduct')}</>}<Link className="nav-user" to="/dashboard" title={session.user || t(lang, 'dashboard')}>{session.user || t(lang, 'dashboard')}</Link><button className="nav-action" type="button" onClick={onLogout}>{t(lang, 'signOut')}</button></>
         : <Link to="/login">{t(lang, 'login')}</Link>}
       <Link className="cart-link" to="/cart">{t(lang, 'cart')} <span className="cart-count">{cartCount}</span></Link>
       <button className="language-toggle" type="button" onClick={onToggle} aria-label={t(lang, 'language')}>{t(lang, 'switchToEnglish')}</button>
@@ -489,8 +492,7 @@ function Checkout({ lang, session, cart, onClearCart, onRemoveItems }) {
   </section>;
 }
 
-function Dashboard({ lang }) {
-  const session = JSON.parse(localStorage.getItem('session') || '{}');
+function Dashboard({ lang, session }) {
   return <div className="dashboard">
     <span className="eyebrow">{t(lang, 'yourSpace')}</span>
     <h1>{t(lang, 'hello')}, {session.user || (lang === 'mr' ? 'मित्रा' : 'there')} 👋</h1>
@@ -499,8 +501,35 @@ function Dashboard({ lang }) {
       <div><b>₹4,280</b><span>{t(lang, 'thisMonth')}</span></div>
       <div><b>6</b><span>{t(lang, 'orders')}</span></div>
     </div>
+    {session?.role === 'FARMER' && <Link className="button" to="/products/new">{t(lang, 'addProduct')}</Link>}
     <Link className="button" to="/marketplace">{t(lang, 'continueShopping')}</Link>
   </div>;
+}
+
+function AddProduct({ lang, session }) {
+  const [form, setForm] = useState({ name: '', category: 'VEGETABLE', description: '', pricePerKg: '', availableQuantity: '', unit: 'kg', minimumOrderQuantity: '1', qualityGrade: 'A', location: '', imageUrl: '' });
+  const [error, setError] = useState(''); const [success, setSuccess] = useState(''); const [saving, setSaving] = useState(false);
+  function update(field, value) { setForm(current => ({ ...current, [field]: value })); }
+  async function submit(e) {
+    e.preventDefault(); setError(''); setSuccess(''); setSaving(true);
+    try { await api.post('/products', { ...form, pricePerKg: Number(form.pricePerKg), availableQuantity: Number(form.availableQuantity), minimumOrderQuantity: Number(form.minimumOrderQuantity) }); setSuccess(t(lang, 'productAdded')); setForm({ name: '', category: 'VEGETABLE', description: '', pricePerKg: '', availableQuantity: '', unit: 'kg', minimumOrderQuantity: '1', qualityGrade: 'A', location: '', imageUrl: '' }); }
+    catch (e) { setError(e.response?.data?.message || t(lang, 'productAddError')); } finally { setSaving(false); }
+  }
+  if (session?.role !== 'FARMER') return <div className="auth"><h1>{t(lang, 'addProduct')}</h1><p>{t(lang, 'farmerOnly')}</p><Link className="button" to="/register">{t(lang, 'createAccount')}</Link></div>;
+  return <div className="auth product-form"><span className="eyebrow">{t(lang, 'addProduct')}</span><h1>{t(lang, 'addProductTitle')}</h1><form onSubmit={submit}>
+    <label>{t(lang, 'productName')}<input required maxLength="120" value={form.name} onChange={e => update('name', e.target.value)} /></label>
+    <label>{t(lang, 'category')}<select value={form.category} onChange={e => update('category', e.target.value)}><option value="VEGETABLE">{t(lang, 'vegetable')}</option><option value="FRUIT">{t(lang, 'fruit')}</option><option value="FLOWER">{t(lang, 'flower')}</option></select></label>
+    <label>{t(lang, 'description')}<textarea rows="3" value={form.description} onChange={e => update('description', e.target.value)} /></label>
+    <label>{t(lang, 'pricePerKg')}<input required type="number" min="0.01" step="0.01" value={form.pricePerKg} onChange={e => update('pricePerKg', e.target.value)} /></label>
+    <label>{t(lang, 'availableQuantity')}<input required type="number" min="0.01" step="0.01" value={form.availableQuantity} onChange={e => update('availableQuantity', e.target.value)} /></label>
+    <label>{t(lang, 'unit')}<input required maxLength="20" value={form.unit} onChange={e => update('unit', e.target.value)} /></label>
+    <label>{t(lang, 'minimumOrderQuantity')}<input required type="number" min="0.01" step="0.01" value={form.minimumOrderQuantity} onChange={e => update('minimumOrderQuantity', e.target.value)} /></label>
+    <label>{t(lang, 'qualityGrade')}<input maxLength="30" value={form.qualityGrade} onChange={e => update('qualityGrade', e.target.value)} /></label>
+    <label>{t(lang, 'location')}<input maxLength="150" value={form.location} onChange={e => update('location', e.target.value)} /></label>
+    <label>{t(lang, 'imageUrl')}<input type="url" value={form.imageUrl} onChange={e => update('imageUrl', e.target.value)} /></label>
+    {error && <p className="form-error" role="alert">{error}</p>}{success && <p className="form-success" role="status">{success}</p>}
+    <button className="button full" type="submit" disabled={saving}>{saving ? '…' : t(lang, 'saveProduct')}</button>
+  </form></div>;
 }
 
 function Prices({ lang }) {
@@ -576,7 +605,8 @@ function App() {
         <Route path="/marketplace" element={<Marketplace lang={lang} onAddToCart={addToCart} />} />
         <Route path="/login" element={<Login lang={lang} onSessionChange={setSession} />} />
         <Route path="/register" element={<Register lang={lang} onSessionChange={setSession} />} />
-        <Route path="/dashboard" element={session ? <Dashboard lang={lang} /> : <Login lang={lang} onSessionChange={setSession} />} />
+        <Route path="/dashboard" element={session ? <Dashboard lang={lang} session={session} /> : <Login lang={lang} onSessionChange={setSession} />} />
+        <Route path="/products/new" element={session ? <AddProduct lang={lang} session={session} /> : <Login lang={lang} onSessionChange={setSession} />} />
         <Route path="/cart" element={<CartPage lang={lang} cart={cart} onQuantityChange={updateCartQuantity} onRemove={removeCartItem} />} />
         <Route path="/checkout" element={<Checkout lang={lang} session={session} cart={cart} onClearCart={() => setCart([])} onRemoveItems={removeCartItems} />} />
         <Route path="/prices" element={<Prices lang={lang} />} />
