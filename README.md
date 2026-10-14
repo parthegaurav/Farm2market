@@ -32,6 +32,8 @@ Demo seed data is enabled outside the `prod` Spring profile and inserted on firs
 ## Environment variables
 `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USERNAME`, `DB_PASSWORD`, `JWT_SECRET`, `VITE_API_URL`.
 
+To send order notifications to `parthegaurav98@gmail.com`, configure the backend Render service with an SMTP provider: `SPRING_MAIL_HOST`, `SPRING_MAIL_PORT`, `SPRING_MAIL_USERNAME`, `SPRING_MAIL_PASSWORD`, `SPRING_MAIL_PROPERTIES_MAIL_SMTP_AUTH=true`, and `SPRING_MAIL_PROPERTIES_MAIL_SMTP_STARTTLS_ENABLE=true`. Store the mail password as a Render secret. The API sends one notification after each confirmed order; order saving does not depend on mail delivery.
+
 ## API overview
 - `POST /api/auth/register`, `POST /api/auth/login`
 - `GET /api/products`, `GET /api/products/{id}`, `GET /api/products/search?keyword=`, `GET /api/products/category/{category}`
