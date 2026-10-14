@@ -97,7 +97,7 @@ const text = {
     thisMonth: 'या महिन्यात',
     orders: 'ऑर्डर्स',
     continueShopping: 'खरेदी सुरू ठेवा',
-    marketWatch: 'बाजारभाव पाहा',
+    editPrice: 'किंमत बदला', savePrice: 'जतन करा', cancel: 'रद्द करा', newPrice: 'नवीन किंमत', priceSaved: 'किंमत अद्ययावत केली.', priceSaveError: 'किंमत जतन करता आली नाही.',\n    marketWatch: 'बाजारभाव पाहा',
     todaysPrices: 'आजचे बाजारभाव',
     localAverage: 'स्थानिक बाजारातील सरासरी',
     language: 'भाषा बदला',
@@ -178,7 +178,7 @@ const text = {
     thisMonth: 'This month',
     orders: 'Orders',
     continueShopping: 'Continue shopping',
-    marketWatch: 'MARKET WATCH',
+    editPrice: 'Edit price', savePrice: 'Save', cancel: 'Cancel', newPrice: 'New price', priceSaved: 'Price updated.', priceSaveError: 'Could not save price.',\n    marketWatch: 'MARKET WATCH',
     todaysPrices: "Today's market prices",
     localAverage: 'Local market average',
     language: 'Change language',
@@ -208,7 +208,7 @@ function Nav({ lang, onToggle, session, cartCount, onLogout }) {
       <Link to="/marketplace">{t(lang, 'marketplace')}</Link>
       <Link to="/prices">{t(lang, 'prices')}</Link>
       {session
-        ? <>{session.role === 'FARMER' && <Link to="/products/new">{t(lang, 'addProduct')}</>}<Link className="nav-user" to="/dashboard" title={session.user || t(lang, 'dashboard')}>{session.user || t(lang, 'dashboard')}</Link><button className="nav-action" type="button" onClick={onLogout}>{t(lang, 'signOut')}</button></>
+        ? <>{(session.role === 'FARMER' || session.role === 'ADMIN') && <Link to="/products/new">{t(lang, 'addProduct')}</>}<Link className="nav-user" to="/dashboard" title={session.user || t(lang, 'dashboard')}>{session.user || t(lang, 'dashboard')}</Link><button className="nav-action" type="button" onClick={onLogout}>{t(lang, 'signOut')}</button></>
         : <Link to="/login">{t(lang, 'login')}</Link>}
       <Link className="cart-link" to="/cart">{t(lang, 'cart')} <span className="cart-count">{cartCount}</span></Link>
       <button className="language-toggle" type="button" onClick={onToggle} aria-label={t(lang, 'language')}>{t(lang, 'switchToEnglish')}</button>
@@ -501,7 +501,7 @@ function Dashboard({ lang, session }) {
       <div><b>₹4,280</b><span>{t(lang, 'thisMonth')}</span></div>
       <div><b>6</b><span>{t(lang, 'orders')}</span></div>
     </div>
-    {session?.role === 'FARMER' && <Link className="button" to="/products/new">{t(lang, 'addProduct')}</Link>}
+    {(session?.role === 'FARMER' || session?.role === 'ADMIN') && <Link className="button" to="/products/new">{t(lang, 'addProduct')}</Link>}
     <Link className="button" to="/marketplace">{t(lang, 'continueShopping')}</Link>
   </div>;
 }
@@ -515,7 +515,7 @@ function AddProduct({ lang, session }) {
     try { await api.post('/products', { ...form, pricePerKg: Number(form.pricePerKg), availableQuantity: Number(form.availableQuantity), minimumOrderQuantity: Number(form.minimumOrderQuantity) }); setSuccess(t(lang, 'productAdded')); setForm({ name: '', category: 'VEGETABLE', description: '', pricePerKg: '', availableQuantity: '', unit: 'kg', minimumOrderQuantity: '1', qualityGrade: 'A', location: '', imageUrl: '' }); }
     catch (e) { setError(e.response?.data?.message || t(lang, 'productAddError')); } finally { setSaving(false); }
   }
-  if (session?.role !== 'FARMER') return <div className="auth"><h1>{t(lang, 'addProduct')}</h1><p>{t(lang, 'farmerOnly')}</p><Link className="button" to="/register">{t(lang, 'createAccount')}</Link></div>;
+  if (session?.role !== 'FARMER' && session?.role !== 'ADMIN') return <div className="auth"><h1>{t(lang, 'addProduct')}</h1><p>{t(lang, 'farmerOnly')}</p><Link className="button" to="/register">{t(lang, 'createAccount')}</Link></div>;
   return <div className="auth product-form"><span className="eyebrow">{t(lang, 'addProduct')}</span><h1>{t(lang, 'addProductTitle')}</h1><form onSubmit={submit}>
     <label>{t(lang, 'productName')}<input required maxLength="120" value={form.name} onChange={e => update('name', e.target.value)} /></label>
     <label>{t(lang, 'category')}<select value={form.category} onChange={e => update('category', e.target.value)}><option value="VEGETABLE">{t(lang, 'vegetable')}</option><option value="FRUIT">{t(lang, 'fruit')}</option><option value="FLOWER">{t(lang, 'flower')}</option></select></label>
@@ -532,15 +532,46 @@ function AddProduct({ lang, session }) {
   </form></div>;
 }
 
-function Prices({ lang }) {
+function Prices({ lang, session }) {
+  const [prices, setPrices] = useState([]);
+  const [editing, setEditing] = useState(null);
+  const [value, setValue] = useState('');
+  const [message, setMessage] = useState('');
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    api.get('/market-prices').then(r => setPrices(r.data.data || [])).catch(() => setPrices([]));
+  }, []);
+
+  async function savePrice(item) {
+    setError(''); setMessage('');
+    try {
+      const response = await api.put('/market-prices/' + item.id, { price: Number(value) });
+      setPrices(current => current.map(row => row.id === item.id ? response.data.data : row));
+      setEditing(null); setMessage(t(lang, 'priceSaved'));
+    } catch (e) { setError(e.response?.data?.message || t(lang, 'priceSaveError')); }
+  }
+
+  const marketItems = prices.length ? prices : demo.map((d, i) => ({
+    id: null, productName: lang === 'mr' ? d[0] : ['Tomato', 'Onion', 'Fig / Anjeer', 'Mango', 'Marigold'][i],
+    category: d[1], price: Number(d[2].replace(/[^0-9]/g, '')), unit: 'kg', market: t(lang, 'localAverage')
+  }));
+
   return <div className="dashboard">
     <span className="eyebrow">{t(lang, 'marketWatch')}</span>
     <h1>{t(lang, 'todaysPrices')}</h1>
+    {message && <p className="form-success" role="status">{message}</p>}
+    {error && <p className="form-error" role="alert">{error}</p>}
     <div className="table">
-      {demo.map(d => <div key={d[0]}>
-        <b>{lang === 'mr' ? d[0] : ({ 'टोमॅटो': 'Tomato', 'कांदा': 'Onion', 'अंजीर': 'Fig / Anjeer', 'आंबा': 'Mango', 'झेंडू': 'Marigold' }[d[0]])}</b>
-        <span>{d[2]}</span>
-        <small>{t(lang, 'localAverage')}</small>
+      {marketItems.map(item => <div className="market-price-row" key={item.id || item.productName}>
+        <b>{item.productName}</b>
+        {session?.role === 'ADMIN' && item.id && editing === item.id
+          ? <label className="price-edit"><span>{t(lang, 'newPrice')}</span><input type="number" min="0.01" step="0.01" value={value} onChange={e => setValue(e.target.value)} /></label>
+          : <span>₹{item.price}/{item.unit || 'kg'}</span>}
+        <small>{item.market || t(lang, 'localAverage')}</small>
+        {session?.role === 'ADMIN' && item.id && (editing === item.id
+          ? <div className="price-actions"><button className="text-button" type="button" onClick={() => setEditing(null)}>{t(lang, 'cancel')}</button><button className="button" type="button" onClick={() => savePrice(item)}>{t(lang, 'savePrice')}</button></div>
+          : <button className="text-button" type="button" onClick={() => { setEditing(item.id); setValue(String(item.price)); setMessage(''); setError(''); }}>{t(lang, 'editPrice')}</button>)}
       </div>)}
     </div>
   </div>;
@@ -609,7 +640,7 @@ function App() {
         <Route path="/products/new" element={session ? <AddProduct lang={lang} session={session} /> : <Login lang={lang} onSessionChange={setSession} />} />
         <Route path="/cart" element={<CartPage lang={lang} cart={cart} onQuantityChange={updateCartQuantity} onRemove={removeCartItem} />} />
         <Route path="/checkout" element={<Checkout lang={lang} session={session} cart={cart} onClearCart={() => setCart([])} onRemoveItems={removeCartItems} />} />
-        <Route path="/prices" element={<Prices lang={lang} />} />
+        <Route path="/prices" element={<Prices lang={lang} session={session} />} />
         <Route path="*" element={<Home lang={lang} />} />
       </Routes>
     </Layout>
