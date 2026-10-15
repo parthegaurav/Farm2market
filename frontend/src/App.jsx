@@ -49,7 +49,9 @@ function Layout({ children, cart, setCart }) {
     if (!session.token) { window.location.href = '/login'; return; }
     if (!address.trim()) { setNotice('Add a delivery address to place your order.'); return; }
     try {
-      const orderItems = cart.filter((x) => !String(x.id).startsWith('sample-'));\n      if (orderItems.length !== cart.length || !orderItems.length) { setNotice('Preview listings need a live marketplace connection before they can be ordered.'); return; }\n      await api.post('/orders', { items: orderItems.map((x) => ({ productId: x.id, quantity: x.qty })), deliveryLocation: address });
+      const orderItems = cart.filter((x) => !String(x.id).startsWith('sample-'));
+      if (orderItems.length !== cart.length || !orderItems.length) { setNotice('Preview listings need a live marketplace connection before they can be ordered.'); return; }
+      await api.post('/orders', { items: orderItems.map((x) => ({ productId: x.id, quantity: x.qty })), deliveryLocation: address });
       setCart([]); localStorage.removeItem('farm-cart'); setNotice('Order placed — thank you for supporting local farmers!');
     } catch (error) { setNotice(error.response?.data?.message || 'Could not place this order. Please try again.'); }
   }
@@ -131,7 +133,9 @@ function Layout({ children, cart, setCart }) {
     if (!session.token) { window.location.href = '/login'; return; }
     if (!address.trim()) { setNotice('Add a delivery address to place your order.'); return; }
     try {
-      const orderItems = cart.filter((x) => !String(x.id).startsWith('sample-'));\n      if (orderItems.length !== cart.length || !orderItems.length) { setNotice('Preview listings need a live marketplace connection before they can be ordered.'); return; }\n      await api.post('/orders', { items: orderItems.map((x) => ({ productId: x.id, quantity: x.qty })), deliveryLocation: address });
+      const orderItems = cart.filter((x) => !String(x.id).startsWith('sample-'));
+      if (orderItems.length !== cart.length || !orderItems.length) { setNotice('Preview listings need a live marketplace connection before they can be ordered.'); return; }
+      await api.post('/orders', { items: orderItems.map((x) => ({ productId: x.id, quantity: x.qty })), deliveryLocation: address });
       setCart([]); localStorage.removeItem('farm-cart'); setNotice('Order placed — thank you for supporting local farmers!');
     } catch (error) { setNotice(error.response?.data?.message || 'Could not place this order. Please try again.'); }
   }
@@ -162,7 +166,8 @@ function Prices() {
 function Farmer() {
   const session = JSON.parse(localStorage.getItem('session') || '{}');
   const [products, setProducts] = useState([]);
-  const [rates, setRates] = useState([]);\n  const [ratesLive, setRatesLive] = useState(false);
+  const [rates, setRates] = useState([]);
+  const [ratesLive, setRatesLive] = useState(false);
   const [form, setForm] = useState({ name:'', category:'VEGETABLE', pricePerKg:'', availableQuantity:'', unit:'kg', minimumOrderQuantity:1, qualityGrade:'A', location:'' });
   const [priceEdits, setPriceEdits] = useState({});
   const [message, setMessage] = useState('');
