@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { createRoot } from 'react-dom/client';
-import { BrowserRouter, Routes, Route, Link, useNavigate } from 'react-router-dom';
+import { HashRouter, Routes, Route, Link, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import './style.css';
 
@@ -46,7 +46,7 @@ function Layout({ children, cart, setCart }) {
   }
   async function checkout() {
     const session = JSON.parse(localStorage.getItem('session') || '{}');
-    if (!session.token) { window.location.href = '/login'; return; }
+    if (!session.token) { window.location.hash = '#/login'; return; }
     if (!address.trim()) { setNotice('Add a delivery address to place your order.'); return; }
     try {
       const orderItems = cart.filter((x) => !String(x.id).startsWith('sample-'));
@@ -103,4 +103,4 @@ function Login() {
 }
 function Dashboard(){const s=JSON.parse(localStorage.getItem('session')||'{}');return <div className="dashboard"><span className="eyebrow">YOUR FARM2MARKET</span><h1>Hello, {s.user||'there'} 👋</h1><p>Ready to find something fresh?</p><Link className="button" to="/marketplace">Explore local produce →</Link></div>;}
 function App(){const [cart,setCart]=useState(()=>JSON.parse(localStorage.getItem('farm-cart')||'[]'));useEffect(()=>localStorage.setItem('farm-cart',JSON.stringify(cart)),[cart]);const addToCart=(product)=>{setCart((old)=>{const found=old.find((x)=>x.id===product.id);return found?old.map((x)=>x.id===product.id?{...x,qty:x.qty+1}:x):[...old,{...product,qty:1}];});window.dispatchEvent(new Event('open-cart'));};return <Layout cart={cart} setCart={setCart}><Routes><Route path="/" element={<Home/>}/><Route path="/marketplace" element={<Marketplace addToCart={addToCart}/>}/><Route path="/prices" element={<Prices/>}/><Route path="/admin" element={<Admin/>}/><Route path="/login" element={<Login/>}/><Route path="/dashboard" element={<Dashboard/>}/><Route path="*" element={<Home/>}/></Routes></Layout>;}
-createRoot(document.getElementById('root')).render(<BrowserRouter><App/></BrowserRouter>);
+createRoot(document.getElementById('root')).render(<HashRouter><App/></HashRouter>);
