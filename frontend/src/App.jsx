@@ -520,31 +520,38 @@ function Dashboard({ lang, session }) {
 }
 
 function AddProduct({ lang, session }) {
-  const [form, setForm] = useState({ name: '', category: 'VEGETABLE', description: '', pricePerKg: '', availableQuantity: '', unit: 'kg', minimumOrderQuantity: '1', qualityGrade: 'A', location: '', imageUrl: '' });
-  const [error, setError] = useState(''); const [success, setSuccess] = useState(''); const [saving, setSaving] = useState(false);
-  function update(field, value) { setForm(current => ({ ...current, [field]: value })); }
-  async function submit(e) {
-    e.preventDefault(); setError(''); setSuccess(''); setSaving(true);
-    try { await api.post('/products', { ...form, pricePerKg: Number(form.pricePerKg), availableQuantity: Number(form.availableQuantity), minimumOrderQuantity: Number(form.minimumOrderQuantity) }); setSuccess(t(lang, 'productAdded')); setForm({ name: '', category: 'VEGETABLE', description: '', pricePerKg: '', availableQuantity: '', unit: 'kg', minimumOrderQuantity: '1', qualityGrade: 'A', location: '', imageUrl: '' }); }
-    catch (e) { setError(e.response?.data?.message || t(lang, 'productAddError')); } finally { setSaving(false); }
+  const [form,setForm]=useState({name:'',category:'VEGETABLE',description:'',pricePerKg:'',availableQuantity:'',unit:'kg',minimumOrderQuantity:'1',qualityGrade:'A',location:'',imageUrl:'',farmerId:'',market:'Pune APMC',marketPrice:''});
+  const [farmers,setFarmers]=useState([]),[error,setError]=useState(''),[success,setSuccess]=useState(''),[saving,setSaving]=useState(false);
+  const mr=lang==='mr';
+  useEffect(()=>{if(session?.role==='ADMIN')api.get('/admin/users').then(r=>setFarmers((r.data||[]).filter(x=>x.role==='FARMER'))).catch(()=>setError(mr?'शेतकरी यादी लोड होऊ शकली नाही.':'Could not load farmers.'));},[]);
+  function update(field,value){setForm(current=>({...current,[field]:value}));}
+  async function submit(e){
+    e.preventDefault();setError('');setSuccess('');setSaving(true);
+    const {farmerId,market,marketPrice,...product}=form;
+    try{
+      await api.post('/admin/products?farmerId='+encodeURIComponent(farmerId)+'&market='+encodeURIComponent(market)+'&marketPrice='+encodeURIComponent(marketPrice),{...product,pricePerKg:Number(product.pricePerKg),availableQuantity:Number(product.availableQuantity),minimumOrderQuantity:Number(product.minimumOrderQuantity)});
+      setSuccess(mr?'उत्पादन बाजारात जोडले आणि आजचा बाजारभाव नोंदवला.':'Product listed and today’s local market rate saved.');
+      setForm({name:'',category:'VEGETABLE',description:'',pricePerKg:'',availableQuantity:'',unit:'kg',minimumOrderQuantity:'1',qualityGrade:'A',location:'',imageUrl:'',farmerId:'',market:'Pune APMC',marketPrice:''});
+    }catch(err){setError(err.response?.data?.message||t(lang,'productAddError'));}finally{setSaving(false);}
   }
-  if (session?.role !== 'FARMER' && session?.role !== 'ADMIN') return <div className="auth"><h1>{t(lang, 'addProduct')}</h1><p>{t(lang, 'farmerOnly')}</p><Link className="button" to="/register">{t(lang, 'createAccount')}</Link></div>;
-  return <div className="auth product-form"><span className="eyebrow">{t(lang, 'addProduct')}</span><h1>{t(lang, 'addProductTitle')}</h1><form onSubmit={submit}>
-    <label>{t(lang, 'productName')}<input required maxLength="120" value={form.name} onChange={e => update('name', e.target.value)} /></label>
-    <label>{t(lang, 'category')}<select value={form.category} onChange={e => update('category', e.target.value)}><option value="VEGETABLE">{t(lang, 'vegetable')}</option><option value="FRUIT">{t(lang, 'fruit')}</option><option value="FLOWER">{t(lang, 'flower')}</option></select></label>
-    <label>{t(lang, 'description')}<textarea rows="3" value={form.description} onChange={e => update('description', e.target.value)} /></label>
-    <label>{t(lang, 'pricePerKg')}<input required type="number" min="0.01" step="0.01" value={form.pricePerKg} onChange={e => update('pricePerKg', e.target.value)} /></label>
-    <label>{t(lang, 'availableQuantity')}<input required type="number" min="0.01" step="0.01" value={form.availableQuantity} onChange={e => update('availableQuantity', e.target.value)} /></label>
-    <label>{t(lang, 'unit')}<input required maxLength="20" value={form.unit} onChange={e => update('unit', e.target.value)} /></label>
-    <label>{t(lang, 'minimumOrderQuantity')}<input required type="number" min="0.01" step="0.01" value={form.minimumOrderQuantity} onChange={e => update('minimumOrderQuantity', e.target.value)} /></label>
-    <label>{t(lang, 'qualityGrade')}<input maxLength="30" value={form.qualityGrade} onChange={e => update('qualityGrade', e.target.value)} /></label>
-    <label>{t(lang, 'location')}<input maxLength="150" value={form.location} onChange={e => update('location', e.target.value)} /></label>
-    <label>{t(lang, 'imageUrl')}<input type="url" value={form.imageUrl} onChange={e => update('imageUrl', e.target.value)} /></label>
-    {error && <p className="form-error" role="alert">{error}</p>}{success && <p className="form-success" role="status">{success}</p>}
-    <button className="button full" type="submit" disabled={saving}>{saving ? '…' : t(lang, 'saveProduct')}</button>
+  if(session?.role!=='ADMIN')return <div className="auth"><h1>{mr?'प्रशासक प्रवेश आवश्यक':'Admin access required'}</h1><p>{mr?'उत्पादन जोडण्यासाठी प्रशासकाला साइन इन करावे लागेल.':'Only admins can add products and update today’s market rates.'}</p><Link className="button" to="/login">{t(lang,'login')}</Link></div>;
+  return <div className="auth product-form admin-product-form"><span className="eyebrow">{mr?'प्रशासक डॅशबोर्ड':'ADMIN CONSOLE'}</span><h1>{mr?'बाजारात उत्पादन जोडा':'Add a marketplace product'}</h1><p>{mr?'शेतकरी निवडा, विक्री किंमत आणि आजचा स्थानिक बाजारभाव भरा.':'Choose the farmer, marketplace price and today’s local market rate.'}</p><form onSubmit={submit}>
+    <label>{t(lang,'productName')}<input required maxLength="120" value={form.name} onChange={e=>update('name',e.target.value)}/></label>
+    <label>{t(lang,'category')}<select value={form.category} onChange={e=>update('category',e.target.value)}><option value="VEGETABLE">{t(lang,'vegetable')}</option><option value="FRUIT">{t(lang,'fruit')}</option><option value="FLOWER">{t(lang,'flower')}</option></select></label>
+    <label>{mr?'शेतकरी':'Farmer'}<select required value={form.farmerId} onChange={e=>update('farmerId',e.target.value)}><option value="">{mr?'शेतकरी निवडा':'Select a farmer'}</option>{farmers.map(x=><option value={x.id} key={x.id}>{x.name} · {x.location||x.email}</option>)}</select></label>
+    <label>{t(lang,'description')}<textarea rows="2" value={form.description} onChange={e=>update('description',e.target.value)}/></label>
+    <div className="admin-rate-inputs"><label>{mr?'विक्री किंमत / किलो':'Listing price / kg'}<input required type="number" min="0.01" step="0.01" value={form.pricePerKg} onChange={e=>update('pricePerKg',e.target.value)} placeholder="₹"/></label><label>{mr?'आजचा बाजारभाव / किलो':'Today’s market rate / kg'}<input required type="number" min="0.01" step="0.01" value={form.marketPrice} onChange={e=>update('marketPrice',e.target.value)} placeholder="₹"/></label></div>
+    <label>{mr?'स्थानिक बाजारपेठ':'Local market'}<input required value={form.market} onChange={e=>update('market',e.target.value)} placeholder="Pune APMC"/></label>
+    <label>{t(lang,'availableQuantity')}<input required type="number" min="0.01" step="0.01" value={form.availableQuantity} onChange={e=>update('availableQuantity',e.target.value)}/></label>
+    <label>{t(lang,'unit')}<input required maxLength="20" value={form.unit} onChange={e=>update('unit',e.target.value)}/></label>
+    <label>{t(lang,'minimumOrderQuantity')}<input required type="number" min="0.01" step="0.01" value={form.minimumOrderQuantity} onChange={e=>update('minimumOrderQuantity',e.target.value)}/></label>
+    <label>{t(lang,'qualityGrade')}<input maxLength="30" value={form.qualityGrade} onChange={e=>update('qualityGrade',e.target.value)}/></label>
+    <label>{t(lang,'location')}<input required maxLength="150" value={form.location} onChange={e=>update('location',e.target.value)}/></label>
+    <label>{t(lang,'imageUrl')}<input type="url" value={form.imageUrl} onChange={e=>update('imageUrl',e.target.value)}/></label>
+    {error&&<p className="form-error" role="alert">{error}</p>}{success&&<p className="form-success" role="status">{success}</p>}
+    <button className="button full" type="submit" disabled={saving}>{saving?(mr?'जतन होत आहे…':'Saving…'):(mr?'उत्पादन व आजचा भाव जतन करा →':'Save product + today’s rate →')}</button>
   </form></div>;
 }
-
 function Prices({ lang, session }) {
   const [prices, setPrices] = useState([]);
   const [editing, setEditing] = useState(null);
