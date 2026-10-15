@@ -49,7 +49,7 @@ function Layout({ children, cart, setCart }) {
     if (!session.token) { window.location.href = '/login'; return; }
     if (!address.trim()) { setNotice('Add a delivery address to place your order.'); return; }
     try {
-      await api.post('/orders', { items: cart.filter((x) => !String(x.id).startsWith('sample-')).map((x) => ({ productId: x.id, quantity: x.qty })), deliveryLocation: address });
+      const orderItems = cart.filter((x) => !String(x.id).startsWith('sample-'));\n      if (orderItems.length !== cart.length || !orderItems.length) { setNotice('Preview listings need a live marketplace connection before they can be ordered.'); return; }\n      await api.post('/orders', { items: orderItems.map((x) => ({ productId: x.id, quantity: x.qty })), deliveryLocation: address });
       setCart([]); localStorage.removeItem('farm-cart'); setNotice('Order placed — thank you for supporting local farmers!');
     } catch (error) { setNotice(error.response?.data?.message || 'Could not place this order. Please try again.'); }
   }
@@ -80,7 +80,89 @@ function Prices() {
 function Farmer() {
   const session = JSON.parse(localStorage.getItem('session') || '{}');
   const [products, setProducts] = useState([]);
+  import React, { useEffect, useMemo, useState } from 'react';
+import { createRoot } from 'react-dom/client';
+import { BrowserRouter, Routes, Route, Link, useNavigate } from 'react-router-dom';
+import axios from 'axios';
+import './style.css';
+
+const api = axios.create({ baseURL: import.meta.env.VITE_API_URL || 'http://localhost:8080/api' });
+api.interceptors.request.use((config) => {
+  const session = JSON.parse(localStorage.getItem('session') || '{}');
+  if (session.token) config.headers.Authorization = 'Bearer ' + session.token;
+  return config;
+});
+const sampleProducts = [
+  { id: 'sample-tomato', name: 'Farm fresh tomatoes', category: 'VEGETABLE', pricePerKg: 32, availableQuantity: 45, location: 'Saswad, Pune', qualityGrade: 'A', unit: 'kg', emoji: '🍅' },
+  { id: 'sample-onion', name: 'Red onions', category: 'VEGETABLE', pricePerKg: 28, availableQuantity: 80, location: 'Narayangaon, Pune', qualityGrade: 'A', unit: 'kg', emoji: '🧅' },
+  { id: 'sample-mango', name: 'Alphonso mango', category: 'FRUIT', pricePerKg: 145, availableQuantity: 24, location: 'Ratnagiri', qualityGrade: 'A', unit: 'kg', emoji: '🥭' },
+  { id: 'sample-spinach', name: 'Baby spinach', category: 'VEGETABLE', pricePerKg: 36, availableQuantity: 18, location: 'Baramati, Pune', qualityGrade: 'A', unit: 'kg', emoji: '🥬' },
+  { id: 'sample-banana', name: 'Fresh bananas', category: 'FRUIT', pricePerKg: 48, availableQuantity: 60, location: 'Junnar, Pune', qualityGrade: 'A', unit: 'kg', emoji: '🍌' },
+  { id: 'sample-marigold', name: 'Marigold flowers', category: 'FLOWER', pricePerKg: 90, availableQuantity: 20, location: 'Pune', qualityGrade: 'A', unit: 'kg', emoji: '🌼' }
+];
+const demoRates = [
+  { productName: 'Tomato', market: 'Pune APMC', price: 30, unit: 'kg', change: -4 },
+  { productName: 'Onion', market: 'Pune APMC', price: 26, unit: 'kg', change: 3 },
+  { productName: 'Potato', market: 'Pune APMC', price: 24, unit: 'kg', change: 2 },
+  { productName: 'Mango', market: 'Pune APMC', price: 138, unit: 'kg', change: 6 },
+  { productName: 'Banana', market: 'Pune APMC', price: 45, unit: 'kg', change: -2 },
+  { productName: 'Spinach', market: 'Pune APMC', price: 32, unit: 'kg', change: 1 }
+];
+const money = (n) => '₹' + Number(n || 0).toLocaleString('en-IN', { maximumFractionDigits: 0 });
+const unwrap = (r) => r.data && r.data.data !== undefined ? r.data.data : r.data;
+const imageFor = (p) => p.imageUrl || '';
+const emojiFor = (p) => p.category === 'FRUIT' ? '🍊' : p.category === 'FLOWER' ? '🌼' : '🥬';
+
+function Header({ count }) {
+  const session = JSON.parse(localStorage.getItem('session') || '{}');
+  return <header className="topbar"><Link className="brand" to="/"><span className="brand-mark">f</span> farm<span>2</span>market</Link><div className="location-pill"><span>⌖</span><span><small>DELIVERING TO</small><b>Pune, Maharashtra</b></span><span className="chevron">⌄</span></div><nav><Link to="/marketplace">Shop</Link><Link to="/prices">Market rates</Link>{session.role === 'FARMER' && <Link to="/farmer">My farm</Link>}{session.token ? <Link className="nav-account" to={session.role === 'FARMER' ? '/farmer' : '/dashboard'}>Hi, {session.user || 'Account'}</Link> : <Link className="nav-account" to="/login">Sign in</Link>}<a className="cart-nav" href="#cart" onClick={(e) => { e.preventDefault(); window.dispatchEvent(new Event('open-cart')); }}>🛒 <span>{count}</span></a></nav></header>;
+}
+function Layout({ children, cart, setCart }) {
+  const [open, setOpen] = useState(false);
+  const [address, setAddress] = useState('');
+  const [notice, setNotice] = useState('');
+  useEffect(() => { const handler = () => setOpen(true); window.addEventListener('open-cart', handler); return () => window.removeEventListener('open-cart', handler); }, []);
+  const total = cart.reduce((sum, item) => sum + Number(item.pricePerKg || 0) * item.qty, 0);
+  function changeQty(id, diff) {
+    setCart((prev) => prev.map((item) => item.id === id ? { ...item, qty: item.qty + diff } : item).filter((item) => item.qty > 0));
+  }
+  async function checkout() {
+    const session = JSON.parse(localStorage.getItem('session') || '{}');
+    if (!session.token) { window.location.href = '/login'; return; }
+    if (!address.trim()) { setNotice('Add a delivery address to place your order.'); return; }
+    try {
+      const orderItems = cart.filter((x) => !String(x.id).startsWith('sample-'));\n      if (orderItems.length !== cart.length || !orderItems.length) { setNotice('Preview listings need a live marketplace connection before they can be ordered.'); return; }\n      await api.post('/orders', { items: orderItems.map((x) => ({ productId: x.id, quantity: x.qty })), deliveryLocation: address });
+      setCart([]); localStorage.removeItem('farm-cart'); setNotice('Order placed — thank you for supporting local farmers!');
+    } catch (error) { setNotice(error.response?.data?.message || 'Could not place this order. Please try again.'); }
+  }
+  return <><Header count={cart.reduce((n, x) => n + x.qty, 0)} /><main>{children}</main><footer><span className="brand-mark">f</span> Fresh food, fair prices. From your neighbourhood farms.</footer>
+    {open && <div className="sheet-backdrop" onClick={(e) => { if (e.target === e.currentTarget) setOpen(false); }}><section className="cart-sheet" role="dialog" aria-modal="true" aria-label="Your cart"><div className="sheet-grab"/><div className="sheet-head"><div><span className="eyebrow">YOUR BASKET</span><h2>Fresh picks, just added</h2></div><button className="icon-btn" onClick={() => setOpen(false)} aria-label="Close cart">×</button></div>{notice && <div className="notice">{notice}</div>}{cart.length === 0 ? <div className="empty-cart"><span>🧺</span><b>Your basket is waiting</b><p>Add something fresh from a nearby farm.</p><button className="button" onClick={() => setOpen(false)}>Browse produce</button></div> : <><div className="cart-lines">{cart.map((item) => <div className="cart-line" key={item.id}><div className="cart-thumb">{imageFor(item) ? <img src={imageFor(item)} alt="" /> : emojiFor(item)}</div><div className="cart-details"><b>{item.name}</b><small>{money(item.pricePerKg)} / kg · {item.location}</small><strong>{money(item.pricePerKg * item.qty)}</strong></div><div className="qty-control"><button onClick={() => changeQty(item.id, -1)} aria-label="Remove one">−</button><span>{item.qty}</span><button onClick={() => changeQty(item.id, 1)} aria-label="Add one">+</button></div></div>)}</div><label className="address-field">Delivery address<input value={address} onChange={(e) => setAddress(e.target.value)} placeholder="House, street, area" /></label><div className="sheet-total"><div><span>Subtotal · {cart.reduce((n, x) => n + x.qty, 0)} items</span><b>{money(total)}</b></div><button className="button checkout-btn" onClick={checkout}>Continue to checkout <span>→</span></button><small>Fresh produce, delivered with care</small></div></>}</section></div>}</>;
+}
+function Home() {
+  return <><section className="hero"><div className="hero-copy"><span className="eyebrow">GOOD FOOD STARTS CLOSE TO HOME</span><h1>From local farms<br/>to <em>your table.</em></h1><p>Fresh, seasonal produce from farmers around Pune. Know your grower. Pay a fair price.</p><Link className="button" to="/marketplace">Shop fresh produce <span>→</span></Link><div className="hero-proof"><span>✳</span> Harvested nearby <i/> No middlemen <i/> Fair for farmers</div></div><div className="hero-picture"><div className="hero-photo"><div className="photo-label">TODAY'S HARVEST <b>✦</b></div><span className="produce-big">🥬</span><span className="produce-float one">🍅</span><span className="produce-float two">🥕</span><span className="produce-float three">🍋</span><div className="photo-caption"><span>🌱</span><div><b>Picked this morning</b><small>From farms around Pune</small></div></div></div></div></section><section className="home-note"><div><span className="eyebrow">A BETTER WAY TO BUY</span><h2>Good for your kitchen.<br/>Good for your community.</h2></div><Link to="/marketplace" className="text-link">Meet your local growers <span>↗</span></Link></section><section className="value-row"><article><span>01</span><div><b>Know your farmer</b><p>Every listing comes from a real farm in your region.</p></div></article><article><span>02</span><div><b>Fair, transparent prices</b><p>See the local market rate before you choose.</p></div></article><article><span>03</span><div><b>Fresh with less travel</b><p>Seasonal produce grown closer to home.</p></div></article></section></>;
+}
+function Marketplace({ addToCart }) {
+  const [items, setItems] = useState([]);
+  const [query, setQuery] = useState('');
+  const [category, setCategory] = useState('ALL');
+  const [loading, setLoading] = useState(true);
+  useEffect(() => { api.get('/products').then((r) => setItems(unwrap(r) || [])).catch(() => setItems([])).finally(() => setLoading(false)); }, []);
+  const list = items.length ? items : sampleProducts;
+  const filtered = list.filter((p) => p.name.toLowerCase().includes(query.toLowerCase()) && (category === 'ALL' || p.category === category));
+  return <><section className="market-heading"><div><span className="eyebrow">GROWN AROUND YOU</span><h1>Fresh from nearby farms</h1><p>Good things are growing close to home.</p></div><div className="market-count">🌱 <b>{list.length} local finds</b><small>Farm fresh, fairly priced</small></div></section><section className="shop-tools"><label className="searchbox"><span>⌕</span><input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="What are you looking for?" /></label><div className="category-tabs">{[['ALL','Everything'],['VEGETABLE','Vegetables'],['FRUIT','Fruit'],['FLOWER','Flowers']].map(([value,label])=><button className={category===value?'selected':''} key={value} onClick={()=>setCategory(value)}>{label}</button>)}</div></section>{loading && <p className="loading">Finding fresh picks near you…</p>}<section className="product-grid">{filtered.map((p, i) => <article className="product-card" key={p.id}><div className={'product-image tint-' + (i % 5)}>{imageFor(p) ? <img src={imageFor(p)} alt={p.name} /> : <span>{p.emoji || emojiFor(p)}</span>}<span className="fresh-badge">✦ LOCAL</span><button className="quick-add" onClick={() => addToCart(p)} aria-label={'Add ' + p.name + ' to cart'}>+</button></div><div className="product-meta"><span>{p.category}</span><span>GRADE {p.qualityGrade || 'A'}</span></div><h3>{p.name}</h3><div className="farm-place">⌖ {p.location || 'Local farm'} <span>·</span> {p.availableQuantity} kg left</div><div className="product-buy"><div><b>{money(p.pricePerKg)}</b><small> / kg</small></div><button className="add-button" onClick={() => addToCart(p)}>Add <span>+</span></button></div></article>)}</section>{filtered.length===0 && <div className="no-results">No produce found. Try another search.</div>}</>;
+}
+function Prices() {
   const [rates, setRates] = useState([]);
+  const [live, setLive] = useState(false);
+  const [market, setMarket] = useState('Pune APMC');
+  useEffect(() => { api.get('/market-prices').then((r) => { const data=unwrap(r)||[]; if(data.length){setRates(data);setLive(true);} else setRates(demoRates); }).catch(() => setRates(demoRates)); }, []);
+  const filtered = rates.filter((r) => market === 'All markets' || (r.market || '').toLowerCase().includes(market.toLowerCase().split(' ')[0]));
+  return <><section className="market-heading"><div><span className="eyebrow">THE LOCAL PULSE</span><h1>Today’s market rates</h1><p>A little more insight behind every fair price.</p></div><select className="market-select" value={market} onChange={(e)=>setMarket(e.target.value)}><option>Pune APMC</option><option>All markets</option></select></section><div className="rate-banner"><span>↗</span><div><b>{live ? 'Live local market data' : 'Sample local market snapshot'}</b><small>{live ? 'Latest prices from Farm2Market market records' : 'Illustrative rates for Pune APMC · Connect market data for live updates'}</small></div><span className="rate-updated">TODAY · ₹ / KG</span></div><section className="rates-table"><div className="rates-head"><span>PRODUCE</span><span>LOCAL MARKET</span><span>PRICE / KG</span><span>DAILY CHANGE</span></div>{filtered.map((r,i)=><div className="rate-row" key={r.id || r.productName}><span className="rate-name"><i className={'rate-icon ri-'+(i%5)}>{['🍅','🧅','🥔','🥭','🍌','🥬'][i%6]}</i><b>{r.productName}</b></span><span>{r.market || 'Pune APMC'}</span><strong>{money(r.price)}</strong><span className={Number(r.change ?? (i%2===0?-2:3)) >= 0 ? 'change positive' : 'change negative'}>{r.change == null ? '—' : (Number(r.change) >= 0 ? '↗' : '↘') + ' ' + Math.abs(Number(r.change)) + '%'} <small>{r.change == null ? 'not recorded' : 'today'}</small></span></div>)}</section><p className="rate-footnote">Market rates can vary by grade, quality and time of sale. Compare locally and set a price that works for your farm.</p></>;
+}
+function Farmer() {
+  const session = JSON.parse(localStorage.getItem('session') || '{}');
+  const [products, setProducts] = useState([]);
+  const [rates, setRates] = useState([]);\n  const [ratesLive, setRatesLive] = useState(false);
   const [form, setForm] = useState({ name:'', category:'VEGETABLE', pricePerKg:'', availableQuantity:'', unit:'kg', minimumOrderQuantity:1, qualityGrade:'A', location:'' });
   const [priceEdits, setPriceEdits] = useState({});
   const [message, setMessage] = useState('');
