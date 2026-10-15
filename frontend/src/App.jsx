@@ -204,16 +204,24 @@ const categoryText = (lang, category) => ({
 }[category] || category);
 
 function Nav({ lang, onToggle, session, cartCount, onLogout }) {
+  const accountName = session?.user || t(lang, 'dashboard');
+  const initials = accountName.trim().split(/\\s+/).slice(0, 2).map(part => part[0]).join('').toUpperCase();
+
   return <header>
     <Link className="brand" to="/">🌱 {t(lang, 'brand')}</Link>
     <nav>
-      <Link to="/marketplace">{t(lang, 'marketplace')}</Link>
-      <Link to="/prices">{t(lang, 'prices')}</Link>
-      {session
-        ? <>{session.role === 'ADMIN' && <Link to="/products/new">{t(lang, 'addProduct')}</Link>}<Link className="nav-user" to="/dashboard" title={session.user || t(lang, 'dashboard')}>{session.user || t(lang, 'dashboard')}</Link><button className="nav-action" type="button" onClick={onLogout}>{t(lang, 'signOut')}</button></>
-        : <Link to="/login">{t(lang, 'login')}</Link>}
-      <Link className="cart-link" to="/cart">{t(lang, 'cart')} <span className="cart-count">{cartCount}</span></Link>
-      <button className="language-toggle" type="button" onClick={onToggle} aria-label={t(lang, 'language')}>{t(lang, 'switchToEnglish')}</button>
+      <div className="nav-links">
+        <Link to="/marketplace">{t(lang, 'marketplace')}</Link>
+        <Link to="/prices">{t(lang, 'prices')}</Link>
+        {session?.role === 'ADMIN' && <Link to="/products/new">{t(lang, 'addProduct')}</Link>}
+      </div>
+      <div className="nav-tools">
+        <Link className="cart-link" to="/cart">{t(lang, 'cart')} <span className="cart-count">{cartCount}</span></Link>
+        {session
+          ? <><Link className="account-avatar" to="/dashboard" title={accountName} aria-label={accountName}>{initials || 'U'}</Link><button className="nav-action" type="button" onClick={onLogout}>{t(lang, 'signOut')}</button></>
+          : <Link className="login-link" to="/login">{t(lang, 'login')}</Link>}
+        <button className="language-toggle" type="button" onClick={onToggle} aria-label={t(lang, 'language')}>{t(lang, 'switchToEnglish')}</button>
+      </div>
     </nav>
   </header>;
 }
