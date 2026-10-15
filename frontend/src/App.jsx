@@ -205,7 +205,7 @@ const categoryText = (lang, category) => ({
 
 function Nav({ lang, onToggle, session, cartCount, onLogout }) {
   const accountName = session?.user || t(lang, 'dashboard');
-  const initials = accountName.trim().split(/\\s+/).slice(0, 2).map(part => part[0]).join('').toUpperCase();
+  const initials = accountName.trim().split(/\s+/).slice(0, 2).map(part => part[0]).join('').toUpperCase();
 
   return <header>
     <Link className="brand" to="/">🌱 {t(lang, 'brand')}</Link>
