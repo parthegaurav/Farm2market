@@ -13,7 +13,11 @@ spring:
   jackson:
     default-property-inclusion: non_null
 server:
-  port: 8080
+  port: ${PORT:8080}
 jwt:
   secret: ${JWT_SECRET:change-this-development-secret-to-a-long-random-value}
   expiration: 86400000
+
+app:
+  cors:
+    allowed-origin: ${CORS_ALLOWED_ORIGIN:http://localhost:*}
