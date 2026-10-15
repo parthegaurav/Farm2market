@@ -11,5 +11,11 @@ import com.farm2market.entity.*; import com.farm2market.repository.*; import org
    price.setPrice(update.price()); price.setDate(LocalDate.now());
    return Map.of("success",true,"data",repo.save(price));
  }
+ @PostMapping @PreAuthorize("hasRole('ADMIN')") public Map<String,Object> upsertToday(@RequestBody MarketPrice request){
+   if(request.getProductName()==null||request.getProductName().isBlank()||request.getMarket()==null||request.getMarket().isBlank()||request.getPrice()==null||!Double.isFinite(request.getPrice())||request.getPrice()<=0)throw new ResponseStatusException(HttpStatus.BAD_REQUEST,"Product, market and a positive rate are required");
+   MarketPrice price=repo.findByProductNameContainingIgnoreCase(request.getProductName()).stream().filter(item->item.getDate()!=null&&item.getDate().equals(LocalDate.now())&&request.getMarket().equalsIgnoreCase(item.getMarket())).findFirst().orElseGet(MarketPrice::new);
+   price.setProductName(request.getProductName());price.setCategory(request.getCategory());price.setMarket(request.getMarket());price.setUnit(request.getUnit()==null||request.getUnit().isBlank()?"kg":request.getUnit());price.setPrice(request.getPrice());price.setDate(LocalDate.now());
+   return Map.of("success",true,"data",repo.save(price));
+ }
  public record PriceUpdate(Double price){}
 }
